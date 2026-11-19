@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Streaks: Simple Habit Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F1FA;--surface:#fff;--ink:#1D1B2E;--muted:#68657F;--line:#DDD8EC;--accent:#6C4DF4;--on-accent:#fff;--done:#1FA971;--cell:#EEEAF8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#13121C;--surface:#1C1A2A;--ink:#EEEBFA;--muted:#9C98B5;--line:#2F2C45;--accent:#9A83FF;--on-accent:#14102B;--done:#46D69B;--cell:#27243B}}
+:root[data-theme="dark"]{--bg:#13121C;--surface:#1C1A2A;--ink:#EEEBFA;--muted:#9C98B5;--line:#2F2C45;--accent:#9A83FF;--on-accent:#14102B;--done:#46D69B;--cell:#27243B}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Sora,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:640px;margin:0 auto;padding:22px 16px 56px}
+h1{font-size:clamp(2rem,8vw,2.8rem);margin:0;font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.date{color:var(--muted);margin:4px 0 18px}
+.today{background:var(--ink);color:var(--bg);border-radius:16px;padding:16px 18px;margin-bottom:18px}
+.today b{font-size:1.9rem;font-weight:800}
+.bar{height:8px;border-radius:99px;background:rgba(127,127,127,.35);margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--done);width:0;transition:width .3s}
+form{display:flex;gap:8px;margin-bottom:18px}
+input{flex:1;min-width:0;font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink)}
+.add{font:inherit;font-weight:600;border:0;border-radius:12px;padding:0 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.habit{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.top h2{margin:0;font-size:1.05rem;font-weight:600;overflow-wrap:anywhere}
+.streak{font-size:.85rem;color:var(--muted);white-space:nowrap}
+.streak b{color:var(--ink)}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.d{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.72rem;color:var(--muted)}
+.d button{width:100%;aspect-ratio:1;max-width:48px;border:2px solid transparent;border-radius:12px;background:var(--cell);cursor:pointer;color:var(--on-accent);font:inherit;font-weight:800;font-size:1.1rem}
+.d button[aria-pressed="true"]{background:var(--done)}
+.d.now button{border-color:var(--accent)}
+.d.now{color:var(--ink);font-weight:600}
+.del{background:none;border:0;color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer;margin-top:10px;padding:0;text-decoration:underline}
+.empty{text-align:center;color:var(--muted);padding:28px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Streaks</h1>
+  <p class="date" id="date"></p>
+  <div class="today" aria-live="polite"><b id="tn">0/0</b> done today<div class="bar"><i id="tb"></i></div></div>
+  <form id="f"><input id="in" placeholder="New habit, e.g. Drink water" maxlength="40" aria-label="New habit"><button class="add" type="submit">Add</button></form>
+  <div id="list"></div>
+</main>
+<script>
+var H=[];var $=function(i){return document.getElementById(i)};
+try{var r=localStorage.getItem("streaks-v1");if(r){H=JSON.parse(r)||[]}}catch(e){}
+function save(){try{localStorage.setItem("streaks-v1",JSON.stringify(H))}catch(e){}}
+function key(d){return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}
+function ago(n){var d=new Date();d.setDate(d.getDate()-n);return d}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function streak(h){var n=0,i=h.done.indexOf(key(ago(0)))>-1?0:1;while(h.done.indexOf(key(ago(i)))>-1){n++;i++}return n}
+$("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+$("f").onsubmit=function(e){e.preventDefault();var v=$("in").value.trim();if(!v)return;H.push({id:Date.now(),name:v,done:[]});$("in").value="";save();render()};
+function toggle(id,k){H.forEach(function(h){if(h.id===id){var i=h.done.indexOf(k);if(i>-1)h.done.splice(i,1);else h.done.push(k)}});save();render()}
+function del(id){H=H.filter(function(h){return h.id!==id});save();render()}
+function render(){
+ var t=key(ago(0)),dn=H.filter(function(h){return h.done.indexOf(t)>-1}).length;
+ $("tn").textContent=dn+"/"+H.length;$("tb").style.width=(H.length?dn/H.length*100:0)+"%";
+ if(!H.length){$("list").innerHTML='<p class="empty">No habits yet. Add one above to start your first streak.</p>';return}
+ $("list").innerHTML=H.map(function(h){
+  var cells="";for(var n=6;n>=0;n--){var d=ago(n),k=key(d),on=h.done.indexOf(k)>-1;
+   cells+='<div class="d'+(n===0?' now':'')+'"><button data-h="'+h.id+'" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(h.name)+', '+d.toLocaleDateString(undefined,{weekday:"long"})+'">'+(on?"✓":"")+'</button>'+d.toLocaleDateString(undefined,{weekday:"short"}).slice(0,3)+'</div>'}
+  return '<section class="habit"><div class="top"><h2>'+esc(h.name)+'</h2><span class="streak"><b>'+streak(h)+'</b> day streak</span></div><div class="days">'+cells+'</div><button class="del" data-del="'+h.id+'">Delete</button></section>'}).join("");
+ Array.prototype.forEach.call(document.querySelectorAll("[data-k]"),function(b){b.onclick=function(){toggle(+b.getAttribute("data-h"),b.getAttribute("data-k"))}});
+ Array.prototype.forEach.call(document.querySelectorAll("[data-del]"),function(b){b.onclick=function(){del(+b.getAttribute("data-del"))}});
+}
+render();
+</script>
+</body>
+</html>
